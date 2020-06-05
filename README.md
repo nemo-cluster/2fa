@@ -77,6 +77,32 @@ Sudo anlegen `/etc/sudoers.d/10-oathuseradd`
 ALL ALL=(root) NOPASSWD: /usr/local/bin/oathuseradd
 ```
 
+## Konfiguration der Login-Knoten
+
+Installation von Paketabhängigkeiten bei CentOS7
+```bash
+# EPEL Repo
+yum install -y epel-release
+# PAM OATH
+yum install -y pam_oath
+```
+
+PAM konfugurieren für SSH `/etc/pam.d/sshd`. Je nachdem ob diese Zeile am Anfang oder Ende staht wird das TOTP-Token vor oder nach Passworteingabe abgefragt.
+```bash
+auth	  required pam_oath.so usersfile=/etc/users.oath window=30 digits=6
+```
+
+SSHD für PAsswort und TOTP konfigurieren `/etc/ssh/sshd_config`
+```bash
+ChallengeResponseAuthentication yes
+UsePAM yes
+```
+
+Sollen Zusätzlich SSH-Schlüssel mit TOTP abgesichert werden, dann muss folgende Zeile in der SSHD-Konfiguration enthalten sein:
+```bash
+AuthenticationMethods publickey,keyboard-interactive
+```
+
 ## Pro und Contra beider Versionen
 
 TODO
