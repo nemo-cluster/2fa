@@ -1,9 +1,24 @@
 # 2FA
 Erste Tests mit 2FA bei NEMO zum Testen für bwHPC
 
-Bei diesem Ansatz wird nur ein SSH-Zugang des Nutzers benötigt und der QRcode für Auth-Apps wird angezeigt. Dieser wird nur beim ersten Login angezeigt.
+Bei diesem Ansatz wird nur ein SSH-Zugang des Nutzers benötigt und der QR-Code für Auth-Apps wird angezeigt. Dieser wird nur beim ersten Login angezeigt.
 
 Zukünftig könnte man auch Yubikeys etc. unterstützen. Derzeit funktioniert das nur nur über die Yubikey-Mobil-App, die vergleichbar mit den Auth-Apps ist.
+
+## Mobile-Apps
+
+Mobile Authenticator-Apps für Andriod
+
+* [FreeOTP Authenticator](https://play.google.com/store/apps/details?id=org.fedorahosted.freeotp)
+* [Aegis Authenticator ](https://play.google.com/store/apps/details?id=com.beemdevelopment.aegis)
+* [Google Authenticator](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2)
+* [Yubico Authenticator](https://play.google.com/store/apps/details?id=com.yubico.yubioath)
+
+und IOS
+
+* [FreeOTP Authenticator](https://apps.apple.com/us/app/freeotp-authenticator/id872559395)
+* [Google Authenticator](https://apps.apple.com/us/app/google-authenticator/id388497605)
+* [Yubico Authenticator](https://apps.apple.com/us/app/yubico-authenticator/id1476679808)
 
 ## Vorbereitung
 
@@ -21,7 +36,7 @@ yum install -y oddjob-mkhomedir
 authconfig --enablemkhomedir --update
 ```
 
-## OATH-Skripte zum Generien von Codes einrichten
+## OATH-Skripte zum Generieren von Codes einrichten
 
 Es gibt zwei Versionen, für die eine werden Sudo-Rechte benötigt, die andere erledigt die Root-Aufgaben über einen Cron-Job.
 
@@ -41,7 +56,7 @@ Match User *,!root
         ForceCommand /usr/local/bin/oathgen
 ```
 
- SSH-Deinst neu laden
+ SSH-Dienst neu laden
  ```bash
  systemctl reload sshd.service
 ```
@@ -67,7 +82,7 @@ Match User *,!root
         ForceCommand /usr/local/bin/oathgenerate
 ```
 
- SSH-Deinst neu laden
+ SSH-Dienst neu laden
  ```bash
  systemctl reload sshd.service
 ```
@@ -87,12 +102,12 @@ yum install -y epel-release
 yum install -y pam_oath
 ```
 
-PAM konfugurieren für SSH `/etc/pam.d/sshd`. Je nachdem ob diese Zeile am Anfang oder Ende staht wird das TOTP-Token vor oder nach Passworteingabe abgefragt.
+PAM konfigurieren für SSH `/etc/pam.d/sshd`. Je nachdem ob diese Zeile am Anfang oder Ende steht wird das TOTP-Token vor oder nach Passworteingabe abgefragt.
 ```bash
 auth	  required pam_oath.so usersfile=/etc/users.oath window=30 digits=6
 ```
 
-SSHD für PAsswort und TOTP konfigurieren `/etc/ssh/sshd_config`
+SSHD für Passwort und TOTP konfigurieren `/etc/ssh/sshd_config`
 ```bash
 ChallengeResponseAuthentication yes
 UsePAM yes
