@@ -1,0 +1,15 @@
+#!/bin/bash
+
+declare -i TIMER=300
+
+/usr/bin/sudo /usr/local/bin/oathuseradd $USER $1 $2
+
+while [[ $TIMER -ge 1 ]]; do
+    if echo "$TIMER" | grep -q "00$"; then
+        echo -e "Shell closes in $TIMER seconds, \c"
+        echo "abort with STRG+C or close window!"
+    fi
+    sleep 1
+    TIMER=$[$TIMER-1]
+done
+exit

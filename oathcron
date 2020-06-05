@@ -1,0 +1,22 @@
+#!/bin/bash
+
+OATH_ADMIN="root fr_mj0 fr_bw1028"
+OATH_USERS=/etc/users.oath
+
+del_user () {
+   sed -i "/HOTP\/T30\/6\s*${1}\s*/d" $OATH_USERS
+   echo "User $1 deleted"
+}
+
+if ! [[ -e $OATH_USERS ]]; then
+    echo -e "# pam_oath file generated on $( date -Iseconds )" >>$OATH_USERS 
+    echo -e "# Option\tUser\tPrefix\tSeed" >>$OATH_USERS 
+    chmod 600 $OATH_USERS
+fi
+
+for oath in $( \ls /home/*/*/*/.user.oath 2>/dev/null ); do
+    cat $oath >>$OATH_USERS
+    sed -i '/.*/d' $oath
+done
+
+exit

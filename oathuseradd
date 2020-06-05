@@ -1,0 +1,59 @@
+#!/bin/bash
+
+OATH_USER="$1"
+OATH_ADMCMD="$2"
+OATH_CMDUSR="$3"
+export OATH_USERS=/etc/users.oath
+OATH_ADMIN="root fr_mj0 fr_bw1028"
+export LOGINNAME="login.nemo.uni-freiburg.de"
+OATH_HOTL="enm-support@hpc.uni-freiburg.de"
+
+if echo " x${OATH_USER}y " | grep -qE " xy "; then
+    echo "Wrong user"
+    exit
+fi
+
+add_user () {
+    OATH_SEED=$( head -10 /dev/urandom | sha512sum | cut -b 1-30 )
+    OATH_BASE32=$( oathtool -v $OATH_SEED \
+                 | awk -F ': ' '$1 == "Base32 secret" { print $2 }')
+    echo -e "HOTP/T30/6\t${1}\t-\t$OATH_SEED" >>$OATH_USERS
+    qrencode -t UTF8 \
+        "otpauth://totp/${1}@${LOGINNAME}?secret=${OATH_BASE32}"
+    echo "This code is only shown once, please add it to your generator."
+    echo "Please do not save copies of this code on systems you use to login."
+}
+
+del_user () {
+   sed -i "/HOTP\/T30\/6\s*${1}\s*/d" $OATH_USERS
+   echo "User $1 deleted"
+}
+
+if ! [[ -e $OATH_USERS ]]; then
+    echo -e "# pam_oath file generated on $( date -Iseconds )" >>$OATH_USERS 
+    echo -e "# Option\tUser\tPrefix\tSeed" >>$OATH_USERS 
+    chmod 600 $OATH_USERS
+fi
+
+if [[ $# -eq 3 ]]; then
+    for adm in $OATH_ADMIN; do
+        if echo " x${adm}y " | grep -q " x${OATH_USER}y "; then
+            if echo " x${OATH_ADMCMD}y " | grep -q " xdely "; then
+                del_user ${OATH_CMDUSR}
+                exit
+            fi
+            exit
+        fi
+    done
+fi
+
+if ! grep -q "\s${OATH_USER}\s" $OATH_USERS; then
+    add_user $OATH_USER
+    exit
+else
+    echo "User $OATH_USER exists, please contact support:"
+    echo "    $OATH_HOTL"
+    exit
+fi
+
+exit
