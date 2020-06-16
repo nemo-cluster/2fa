@@ -22,12 +22,18 @@ und IOS
 
 ## Vorbereitung
 
+Es gibt drei Knotenarten, den Knoten auf dem der "Zweite Faktor" erzeugt wird, einen zentralen Managementknoten und als letztes, die Knoten auf denen die Zwei-Faktor-Authentifizierung erfolgen soll.
+
+### QR-Code-Generator-Knoten
+
+Der QR-Code-Generator benötigt Software zu Erzeugen des "Zweiten Faktors".
+
 Installation von Paketabhängigkeiten bei CentOS7
 ```bash
 # EPEL Repo
 yum install -y epel-release
-# OATH inkl. zusätzlicher Werkzeuge
-yum install -y oathtool pam_oath qrencode
+# oathtool, QR-Code-Generator und inotify-tools
+yum install -y oathtool qrencode inotify-tools
 ```
 
 Wenn Nutzer-Homes automatisch angelegt werden sollen, Oddjob installieren
@@ -36,18 +42,73 @@ yum install -y oddjob-mkhomedir
 authconfig --enablemkhomedir --update
 ```
 
+Weitere sinnvolle Softwarepakete:
+* SSSD für die Nutzerauthentifikation
+* Firewalld für zusätzliche Firewalls gegen Angreifer
+* OpenSSL, sollte bereits installiert sein
+
+### Management-Knoten
+
+Der Management-Knoten benötigt neben `<openssl>` zum Entschlüsseln und Erstellen der Schlüssel, `<scp>` oder `<rsync>` und beispielsweise `<pdsh>` zum Kopieren der Dateien auf die Knoten.
+
+```bash
+# EPEL Repo
+yum install -y epel-release
+# pdsh
+yum install -y pdsh pdsh-mod-genders
+```
+
+### Zwei-Faktor-Knoten
+
+Damit der "Zweite Faktor" geprüfte werden kann wird nur folgendes Paket benötigt.
+```bash
+# EPEL Repo
+yum install -y epel-release
+# pam_oath
+yum install -y pam_oath
+```
+
 ## OATH-Skripte zum Generieren von Codes einrichten
 
-Es gibt zwei Versionen, für die eine werden Sudo-Rechte benötigt, die andere erledigt die Root-Aufgaben über einen Cron-Job.
+In der neuen Version werden die Schlüssel für den "Zweiten Faktor" von den Nutzern erzeugt und direkt mit einem öffentlichen Schlüssel des Management-Knotens verschlüsselt. Ein Systemd-Dienst verschiebt die Datei in ein zentralen Ordner mit Hilfe von `<inotifywait>`.
 
-### Variante 1 - Cron-Job
+### Management-Knoten
+
+OATH-Skript kopieren
+```bash
+cp oathcron /usr/local/bin/
+chmod 755 oathcron
+```
+
+Erstellen der Schlüssel zum verschlüsseln der "Zweiten Faktoren"
+```bash
+openssl genrsa -out /usr/local/etc/private_key_2fa.pem 4096
+openssl rsa -in /usr/local/etc/private_key_2fa.pem -out /usr/local/etc/public_key_2fa.pem -outform PEM -pubout
+```
+
+Crontab-Eintrag einrichten, sollte erst ganz zum Schluss eingerichtet werden.
+```bash
+$ crontab -e
+* * * * *       /usr/local/bin/oathcron
+```
+
+### QR-Code-Genarator-Knoten
 
 OATH-Skripte kopieren
 ```bash
-cp oathcron oathgen /usr/local/bin/
-chmod 755 oathgen
-chmod 700 oathcron
+cp oathinotify oathgen /usr/local/bin/
+cp 2fa-inotify.service /etc/systemd/system/
+chmod 755 oathgen oathinotify
 ```
+
+Systemd-Service aktivieren
+```bash
+systemctl daemon-reload
+systemctl enable 2fa-inotify.service
+systemctl start 2fa-inotify.service
+```
+
+Damit die Nutzer*innen nur ein Skript ausführen können, wird nur das in des SSHD-Konfiguration gestattet.
 
 SSHD-Konfiguration `/etc/ssh/sshd_config` anpassen
 ```bash
@@ -61,38 +122,7 @@ Match User *,!root
  systemctl reload sshd.service
 ```
 
-Crontab anlegen `crontab -e`
-```bash
-* * * * *      /usr/local/bin/oathcron
-```
-
-### Variante 2 - Sudo
-
-OATH-Skripte kopieren
-```bash
-cp oathuseradd oathgenerate /usr/local/bin/
-chmod 755 oathgenerate
-chmod 700 oathuseradd
-```
-
-SSHD-Konfiguration `/etc/ssh/sshd_config` anpassen
-```bash
-# alle außer root führen automatisch Kommando aus
-Match User *,!root
-        ForceCommand /usr/local/bin/oathgenerate
-```
-
- SSH-Dienst neu laden
- ```bash
- systemctl reload sshd.service
-```
-
-Sudo anlegen `/etc/sudoers.d/10-oathuseradd`
-```bash
-ALL ALL=(root) NOPASSWD: /usr/local/bin/oathuseradd
-```
-
-## Konfiguration der Login-Knoten
+### Zwei-Faktor-Knoten
 
 Installation von Paketabhängigkeiten bei CentOS7
 ```bash
@@ -104,7 +134,7 @@ yum install -y pam_oath
 
 PAM konfigurieren für SSH `/etc/pam.d/sshd`. Je nachdem ob diese Zeile am Anfang oder Ende steht wird das TOTP-Token vor oder nach Passworteingabe abgefragt.
 ```bash
-auth	  required pam_oath.so usersfile=/etc/users.oath window=30 digits=6
+auth	  required pam_oath.so usersfile=/usr/local/etc/users.oath window=30 digits=6
 ```
 
 SSHD für Passwort und TOTP konfigurieren `/etc/ssh/sshd_config`
@@ -117,7 +147,3 @@ Sollen Zusätzlich SSH-Schlüssel mit TOTP abgesichert werden, dann muss folgend
 ```bash
 AuthenticationMethods publickey,keyboard-interactive
 ```
-
-## Pro und Contra beider Versionen
-
-TODO
