@@ -13,6 +13,7 @@ fi
 /usr/bin/rsync -a --delete ${OATH_NODE}:${OATH_REMOTE}/ ${OATH_LOCAL_ETC}/oath/
 
 echo "# Option  User    Prefix  Seed    LastOTP Timestamp" >${OATH_USERS}.new
+chmod 600 ${OATH_USERS}.new
 
 for file in $( ls ${OATH_LOCAL_ETC}/oath/* ); do
     /usr/bin/openssl rsautl -decrypt -inkey $OATH_KEY -in $file \
