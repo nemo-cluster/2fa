@@ -1,0 +1,14 @@
+[Unit]
+Description=2FA inofify and copy service
+Before=sshd.service
+
+[Service]
+ExecStart=/usr/local/bin/oathinotify
+Restart=always
+RestartSec=1
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=2FA
+
+[Install]
+WantedBy=multi-user.target
