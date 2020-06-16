@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OATH_NODE=132.230.223.225
+OATH_NODE=2fa.nemo.cluster
 OATH_LOCAL_ETC=/usr/local/etc
 OATH_REMOTE=/usr/local/etc/oath
 OATH_USERS=/usr/local/etc/users.oath
