@@ -1,31 +1,28 @@
 #!/bin/bash
 
-OATH_USER=$USER
-export OATH_USERS=${HOME}/.user.oath
+export OATH_TMP_FILE=${HOME}/.oath.enc
 export LOGINNAME="login.nemo.uni-freiburg.de"
+export OATH_PUB_KEY=/usr/local/etc/public_key_2fa.pem
+OATH_USER_FILE=/usr/local/etc/oath/$USER
 OATH_HOTL="enm-support@hpc.uni-freiburg.de"
 declare -i TIMER=300
-
-if echo " x${OATH_USER}y " | grep -qE " xy "; then
-    echo "Wrong user"
-    exit
-fi
 
 add_user () {
     OATH_SEED=$( head -10 /dev/urandom | sha512sum | cut -b 1-30 )
     OATH_BASE32=$( oathtool -v $OATH_SEED \
                  | awk -F ': ' '$1 == "Base32 secret" { print $2 }')
-    echo -e "HOTP/T30/6\t${1}\t-\t$OATH_SEED" >$OATH_USERS
+    echo -e "HOTP/T30/6\t${1}\t-\t$OATH_SEED" | \
+        openssl rsautl -encrypt -inkey $OATH_PUB_KEY -pubin -out $OATH_TMP_FILE
     qrencode -t UTF8 \
         "otpauth://totp/${1}@${LOGINNAME}?secret=${OATH_BASE32}"
     echo "This code is only shown once, please add it to your generator."
     echo "Please do not save copies of this code on systems you use to login."
 }
 
-if ! [[ -e $OATH_USERS ]]; then
-    add_user $OATH_USER
+if ! [[ -e $OATH_USER_FILE ]]; then
+    add_user $USER
 else
-    echo "User $OATH_USER exists, please contact support:"
+    echo "User $USER exists, please contact support:"
     echo "    $OATH_HOTL"
 fi
 

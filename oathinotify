@@ -1,0 +1,20 @@
+#!/bin/bash
+
+OATH_USER_FILE=".oath.enc"
+OATH_USERS="/usr/local/etc/oath"
+
+if ! [[ -e $OATH_USERS ]]; then
+    mkdir -p $OATH_USERS
+fi
+
+inotifywait -m -e close_write --exclude .bashrc -r /home | \
+while read dir ops file; do
+    if [[ "${file}" == ${OATH_USER_FILE} ]]; then
+        OATH_USER=$( basename $dir )
+        mv ${dir}/${file} ${OATH_USERS}/${OATH_USER}
+        chown root.root ${OATH_USERS}/${OATH_USER}
+        chmod 600 ${OATH_USERS}/${OATH_USER}
+    fi
+done
+
+exit

@@ -1,22 +1,27 @@
 #!/bin/bash
 
-OATH_ADMIN="root fr_mj0 fr_bw1028"
-OATH_USERS=/etc/users.oath
+OATH_NODE=132.230.223.225
+OATH_LOCAL_ETC=/usr/local/etc
+OATH_REMOTE=/usr/local/etc/oath
+OATH_USERS=/usr/local/etc/users.oath
+OATH_KEY=/usr/local/etc/private_key_2fa.pem
 
-del_user () {
-   sed -i "/HOTP\/T30\/6\s*${1}\s*/d" $OATH_USERS
-   echo "User $1 deleted"
-}
-
-if ! [[ -e $OATH_USERS ]]; then
-    echo -e "# pam_oath file generated on $( date -Iseconds )" >>$OATH_USERS 
-    echo -e "# Option\tUser\tPrefix\tSeed" >>$OATH_USERS 
-    chmod 600 $OATH_USERS
+if ! [[ -e ${OATH_LOCAL_ETC}/oath ]]; then
+    /usr/bin/mkdir -p ${OATH_LOCAL_ETC}/oath
 fi
 
-for oath in $( \ls /home/*/*/*/.user.oath 2>/dev/null ); do
-    cat $oath >>$OATH_USERS
-    sed -i '/.*/d' $oath
+/usr/bin/rsync -a --delete ${OATH_NODE}:${OATH_REMOTE}/ ${OATH_LOCAL_ETC}/oath/
+
+echo "# Option  User    Prefix  Seed    LastOTP Timestamp" >${OATH_USERS}.new
+
+for file in $( ls ${OATH_LOCAL_ETC}/oath/* ); do
+    /usr/bin/openssl rsautl -decrypt -inkey $OATH_KEY -in $file \
+        >>${OATH_USERS}.new
 done
 
-exit
+if ! diff -q ${OATH_USERS}.new ${OATH_USERS} >/dev/null; then
+    mv ${OATH_USERS}.new ${OATH_USERS}
+    /usr/bin/pdcp -g login,vis ${OATH_USERS} ${OATH_USERS}
+else
+    rm -f ${OATH_USERS}.new
+fi

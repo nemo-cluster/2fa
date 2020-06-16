@@ -1,0 +1,14 @@
+#!/bin/bash
+
+OATH_USER="$1"
+OATH_USERS=/usr/local/etc/oath
+OATH_ADMIN="root fr_mj0 fr_bw1028"
+
+if echo " x${OATH_USER}y " | grep -qE " xy "; then
+    echo "Wrong user"
+    exit
+fi
+
+rm -f ${OATH_USERS}/${OATH_USER}
+
+exit
