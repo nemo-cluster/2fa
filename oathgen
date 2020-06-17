@@ -5,7 +5,6 @@ export LOGINNAME="login.nemo.uni-freiburg.de"
 export OATH_PUB_KEY=/usr/local/etc/public_key_2fa.pem
 OATH_USER_FILE=/usr/local/etc/oath/$USER
 OATH_HOTL="enm-support@hpc.uni-freiburg.de"
-declare -i TIMER=300
 
 add_user () {
     OATH_SEED=$( head -10 /dev/urandom | sha512sum | cut -b 1-30 )
@@ -15,24 +14,26 @@ add_user () {
         openssl rsautl -encrypt -inkey $OATH_PUB_KEY -pubin -out $OATH_TMP_FILE
     qrencode -t UTF8 \
         "otpauth://totp/${1}@${LOGINNAME}?secret=${OATH_BASE32}"
-    echo "This code is only shown once, please add it to your generator."
-    echo "Please do not save copies of this code on systems you use to login."
 }
 
 if ! [[ -e $OATH_USER_FILE ]]; then
     add_user $USER
+    echo "This code is only shown once, please add it to your generator."
+    echo "Please do not save copies of this code on systems you use to login."
+    echo
+    echo "If you close this window or session you won't be able to scan the"
+    echo "qr-code anymore. You will need to contact support."
 else
     echo "User $USER exists, please contact support:"
     echo "    $OATH_HOTL"
 fi
 
-while [[ $TIMER -ge 1 ]]; do
-    if echo "$TIMER" | grep -q "00$"; then
-        echo -e "Shell closes in $TIMER seconds, \c"
-        echo "abort with STRG+C or close window!"
+echo
+while true; do
+    read  -p "Exit and close session (y/N) " close
+    if echo " x${close}z "  | grep -i " xyz "; then
+        exit
     fi
-    sleep 1
-    TIMER=$[$TIMER-1]
 done
 
 exit
