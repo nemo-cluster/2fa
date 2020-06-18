@@ -36,7 +36,7 @@ fi
 echo
 while true; do
     read  -p "Exit and close session (y/N) " close
-    if [ " ${close}" = " y" -o " ${close}" " Y" ] ; then
+    if [ " ${close}" = " y" -o " ${close}" = " Y" ] ; then
         exit
     fi
 done
