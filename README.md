@@ -33,7 +33,7 @@ Installation von Paketabhängigkeiten bei CentOS7
 # EPEL Repo
 yum install -y epel-release
 # oathtool, QR-Code-Generator und inotify-tools
-yum install -y oathtool qrencode inotify-tools
+yum install -y oathtool qrencode inotify-tools pinentry
 ```
 
 Wenn Nutzer-Homes automatisch angelegt werden sollen, Oddjob installieren
@@ -82,8 +82,8 @@ chmod 755 oathcron
 
 Erstellen der Schlüssel zum verschlüsseln der "Zweiten Faktoren"
 ```bash
-openssl genrsa -out /usr/local/etc/private_key_2fa.pem 4096
-openssl rsa -in /usr/local/etc/private_key_2fa.pem -out /usr/local/etc/public_key_2fa.pem -outform PEM -pubout
+gpg2 --gen-key
+gpg --export key@subission.binac > /etc/public_key.gpg
 ```
 
 Crontab-Eintrag einrichten, sollte erst ganz zum Schluss eingerichtet werden.
@@ -140,10 +140,15 @@ auth	  required pam_oath.so usersfile=/usr/local/etc/users.oath window=30 digits
 SSHD für Passwort und TOTP konfigurieren `/etc/ssh/sshd_config`
 ```bash
 ChallengeResponseAuthentication yes
+PasswordAuthentication no
 UsePAM yes
 ```
 
 Sollen Zusätzlich SSH-Schlüssel mit TOTP abgesichert werden, dann muss folgende Zeile in der SSHD-Konfiguration enthalten sein:
 ```bash
+PasswordAuthentication no
+ChallengeResponseAuthentication yes
+PubkeyAuthentication yes
 AuthenticationMethods publickey,keyboard-interactive
+UsePAM yes
 ```
