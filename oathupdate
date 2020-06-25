@@ -1,7 +1,7 @@
 #!/bin/bash
 CONTENT_FILE=/tmp/content
 SECRET=/etc/secret
-ADDRESS='[2001:db8::1]'
+ADDRESS=193.196.29.31
 
 cp -a $SECRET $CONTENT_FILE
 
@@ -11,8 +11,7 @@ while true; do
     echo Sending credentials for $user
     cat /home/$user/.oath.enc > $CONTENT_FILE
     echo $user >> $CONTENT_FILE
-    MAC=$(cat $SECRET $CONTENT_FILE | openssl sha3-256 -binary | base64)
-    echo $MAC >> $CONTENT_FILE
+    cat $SECRET $CONTENT_FILE | openssl sha3-256 -binary | base64 >> $CONTENT_FILE
     socat OPEN:$CONTENT_FILE TCP-CONNECT:$ADDRESS:165
     mv /home/$user/.oath.enc /usr/local/etc/oath/$user
   done
