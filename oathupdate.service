@@ -1,0 +1,11 @@
+[Unit]
+Description=Sends new Oauth credentials
+Before=sshd.service
+
+[Service]
+ExecStart=/usr/local/bin/oathupdate
+Restart=always
+Type=simple
+
+[Install]
+WantedBy=multi-user.target

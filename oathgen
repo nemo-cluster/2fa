@@ -11,7 +11,7 @@ add_user () {
     OATH_SEED_BASE16=$( head -c 15 /dev/urandom | xxd -p )
     OATH_SEED_BASE32=$( echo $OATH_SEED_BASE16 | xxd -p -r | base32)
     gpg --import $PUB_KEY_FILE 2> /dev/null
-    echo -e "HOTP/T30/6\t${1}\t-\t$OATH_SEED_BASE16" | gpg2 -a -e -r key@subission.binac --trust-model always > $OATH_TMP_FILE
+    echo -e "$OATH_SEED_BASE16" | gpg2 -a -e -r key@subission.binac --trust-model always > $OATH_TMP_FILE
     qrencode -t UTF8 "otpauth://totp/${1}@${LOGINNAME}?secret=${OATH_SEED_BASE32}"
     echo "Only if you cant scan your this QR-Code:"
     echo "Base32: $OATH_SEED_BASE32"
@@ -19,6 +19,7 @@ add_user () {
     echo "Digits: 6"
     echo "Iterations: 30"
     echo "Algorithm: SHA-1"
+    echo "RUN" | nc ::1 165
 }
 
 if ! [[ -e $OATH_USER_FILE ]]; then
