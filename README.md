@@ -9,10 +9,10 @@ Zukünftig könnte man auch Yubikeys etc. unterstützen. Derzeit funktioniert da
 
 Mobile Authenticator-Apps für Andriod
 
-* [FreeOTP Authenticator](https://play.google.com/store/apps/details?id=org.fedorahosted.freeotp)
-* [Aegis Authenticator ](https://play.google.com/store/apps/details?id=com.beemdevelopment.aegis)
+* [FreeOTP Authenticator](market://details?id=org.fedorahosted.freeotp)
+* [Aegis Authenticator ](market://details?id=com.beemdevelopment.aegis)
 * [Google Authenticator](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2)
-* [Yubico Authenticator](https://play.google.com/store/apps/details?id=com.yubico.yubioath)
+* [Yubico Authenticator](market://details?id=com.yubico.yubioath)
 
 und IOS
 
