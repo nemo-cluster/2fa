@@ -9,10 +9,10 @@ Zukünftig könnte man auch Yubikeys etc. unterstützen. Derzeit funktioniert da
 
 Mobile Authenticator-Apps für Andriod
 
-* [FreeOTP Authenticator](https://play.google.com/store/apps/details?id=org.fedorahosted.freeotp)
-* [Aegis Authenticator ](https://play.google.com/store/apps/details?id=com.beemdevelopment.aegis)
+* [FreeOTP Authenticator](market://details?id=org.fedorahosted.freeotp)
+* [Aegis Authenticator ](market://details?id=com.beemdevelopment.aegis)
 * [Google Authenticator](https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2)
-* [Yubico Authenticator](https://play.google.com/store/apps/details?id=com.yubico.yubioath)
+* [Yubico Authenticator](market://details?id=com.yubico.yubioath)
 
 und IOS
 
@@ -33,7 +33,7 @@ Installation von Paketabhängigkeiten bei CentOS7
 # EPEL Repo
 yum install -y epel-release
 # oathtool, QR-Code-Generator und inotify-tools
-yum install -y oathtool qrencode inotify-tools
+yum install -y oathtool qrencode inotify-tools pinentry socat nmap-ncat
 ```
 
 Wenn Nutzer-Homes automatisch angelegt werden sollen, Oddjob installieren
@@ -46,6 +46,7 @@ Weitere sinnvolle Softwarepakete:
 * SSSD für die Nutzerauthentifikation
 * Firewalld für zusätzliche Firewalls gegen Angreifer
 * OpenSSL, sollte bereits installiert sein
+* GPG muss schon installiert sein.
 
 ### Management-Knoten
 
@@ -61,11 +62,12 @@ yum install -y pdsh pdsh-mod-genders
 ### Zwei-Faktor-Knoten
 
 Damit der "Zweite Faktor" geprüfte werden kann wird nur folgendes Paket benötigt.
+pam_ssh_user_auth ist nur in RHEL 8 verfügbar. Ohne Müssen kann nur entweder Passwort oder oder Key mit OTP genutzt werden.
 ```bash
 # EPEL Repo
 yum install -y epel-release
 # pam_oath
-yum install -y pam_oath
+yum install -y pam_oath pam_ssh_user_auth
 ```
 
 ## OATH-Skripte zum Generieren von Codes einrichten
@@ -76,36 +78,46 @@ In der neuen Version werden die Schlüssel für den "Zweiten Faktor" von den Nut
 
 OATH-Skript kopieren
 ```bash
-cp oathcron /usr/local/bin/
+cp oathcron addline /usr/local/bin/
 chmod 755 oathcron
+chmod +x /usr/local/bin/addline
+cp addline.service /etc/systemd/system/addline.service
+systemctl daemon-reload
+systemctl enable addline
+systemctl start addline
 ```
 
 Erstellen der Schlüssel zum verschlüsseln der "Zweiten Faktoren"
 ```bash
-openssl genrsa -out /usr/local/etc/private_key_2fa.pem 4096
-openssl rsa -in /usr/local/etc/private_key_2fa.pem -out /usr/local/etc/public_key_2fa.pem -outform PEM -pubout
-```
-
-Crontab-Eintrag einrichten, sollte erst ganz zum Schluss eingerichtet werden.
-```bash
-$ crontab -e
-* * * * *       /usr/local/bin/oathcron
+gpg2 --gen-key
+gpg --export key@subission.binac > /etc/public_key.gpg
+install -m 600 /dev/null /etc/secret
+head -c 15 /dev/urandom > /etc/secret
+install -m 600 /dev/null /etc/users.oath
+echo "# Option        User    Prefix  Seed" > /etc/users.oath
 ```
 
 ### QR-Code-Genarator-Knoten
 
 OATH-Skripte kopieren
 ```bash
-cp oathinotify oathgen /usr/local/bin/
-cp 2fa-inotify.service /etc/systemd/system/
+cp oathgen oathupdate /usr/local/bin/
+cp oathupdate.service /etc/systemd/system/
 chmod 755 oathgen oathinotify
+```
+
+copy credentials
+```bash
+scp management:/etc/public_key.gpg /etc/public_key.gpg
+install -m 600 /dev/null /etc/secret
+ssh management cat /etc/secret > /etc/secret
 ```
 
 Systemd-Service aktivieren
 ```bash
 systemctl daemon-reload
-systemctl enable 2fa-inotify.service
-systemctl start 2fa-inotify.service
+systemctl enable oathupdate.service
+systemctl start oathupdate.service
 ```
 
 Damit die Nutzer*innen nur ein Skript ausführen können, wird nur das in des SSHD-Konfiguration gestattet.
@@ -140,10 +152,39 @@ auth	  required pam_oath.so usersfile=/usr/local/etc/users.oath window=30 digits
 SSHD für Passwort und TOTP konfigurieren `/etc/ssh/sshd_config`
 ```bash
 ChallengeResponseAuthentication yes
+PasswordAuthentication no
 UsePAM yes
 ```
 
 Sollen Zusätzlich SSH-Schlüssel mit TOTP abgesichert werden, dann muss folgende Zeile in der SSHD-Konfiguration enthalten sein:
 ```bash
+PasswordAuthentication no
+ChallengeResponseAuthentication yes
+PubkeyAuthentication yes
 AuthenticationMethods publickey,keyboard-interactive
+UsePAM yes
 ```
+Damit nicht mehr nach dem Passwort gefragt wird, muss die passsende Zeile aus pam entfernt werden.
+```bash
+auth       substack     password-auth
+```
+
+Soll beides möglich sein (nur Centos 8)
+```bash
+ExposeAuthInfo yes
+ChallengeResponseAuthentication yes
+PasswordAuthentication no
+PubkeyAuthentication yes
+UsePAM yes
+AuthenticationMethods publickey,keyboard-interactive:pam keyboard-interactive:pam
+```
+Passendes /etc/pam.d/sshd
+```bash
+auth       requisite    pam_oath.so usersfile=/etc/users.oath window=30 digits=6
+auth       [success=1 ignore=ignore default=die]        pam_ssh_user_auth.so
+auth       substack     password-auth
+auth       include      postlogin
+```
+/etc/users.oath sollte ro mit dem management-Knoten geshared sein
+Falls Management Knoten und Zwei-Faktor-Knoten das selbe sein sollten ist das automatisch der Fall.
+Es ist auch möglich ein rsync für die passende Datei an addline anzuhängen. 

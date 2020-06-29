@@ -1,0 +1,23 @@
+#!/bin/sh -e
+
+SECRET=/etc/secret
+OATH_FILE=/etc/users.oath
+
+mkdir -m 100 -p /tmp/incomming
+tmpfile=$(mktemp /tmp/incomming/oath-XXXXXXXXXXXX)
+cat > $tmpfile
+mac=$(cat $SECRET $tmpfile | head --lines=-1 | openssl sha3-256 -binary | base64)
+echo $mac
+if [ ! $mac = $(tail -1 $tmpfile) ];
+  then echo Error: MAC not valid >&2
+  exit 1
+fi
+user=$(head --lines=-1 $tmpfile | tail -1)
+OATH_SEED_BASE16=$(head --lines=-2 $tmpfile | gpg2 -d 2>/dev/null )
+echo $OATH_SEED_BASE16
+cp -a $OATH_FILE $OATH_FILE-
+grep -v -P "\t${user}\t" $OATH_FILE > $OATH_FILE- || true
+mv $OATH_FILE- $OATH_FILE
+echo -e "HOTP/T30/6\t${user}\t-\t$OATH_SEED_BASE16" >> $OATH_FILE
+echo -e "HOTP/T30/6\t${user}\t-\t$OATH_SEED_BASE16" >&2
+rm $tmpfile

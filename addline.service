@@ -1,0 +1,11 @@
+[Unit]
+Description=Adds User to sectrets file
+Before=sshd.service
+
+[Service]
+ExecStart=socat TCP6-LISTEN:165,fork EXEC:/usr/local/bin/addline
+Restart=always
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
