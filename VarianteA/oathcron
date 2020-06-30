@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OATH_NODE=2fa.nemo.cluster
+OATH_NODE=2fa.my.cluster
 OATH_LOCAL_ETC=/usr/local/etc
 OATH_REMOTE=/usr/local/etc/oath
 OATH_USERS=/usr/local/etc/users.oath
@@ -10,14 +10,19 @@ if ! [[ -e ${OATH_LOCAL_ETC}/oath ]]; then
     /usr/bin/mkdir -p ${OATH_LOCAL_ETC}/oath
 fi
 
+### BE CAREFUL, running with delete flag ###
 /usr/bin/rsync -a --delete ${OATH_NODE}:${OATH_REMOTE}/ ${OATH_LOCAL_ETC}/oath/
 
-echo "# Option  User    Prefix  Seed    LastOTP Timestamp" >${OATH_USERS}.new
+printf "%-10s %-12s %-6s %-32s %-6s %-7s %s\n" \
+    "#Option" "User" "Prefix" "Seed" "Counter" "LastOTP" "Timestamp" \
+    >${OATH_USERS}.new
 chmod 600 ${OATH_USERS}.new
 
 for file in $( ls ${OATH_LOCAL_ETC}/oath/* ); do
-    /usr/bin/openssl rsautl -decrypt -inkey $OATH_KEY -in $file \
-        >>${OATH_USERS}.new
+    OATH_USER=$( basename $file )
+    OATH_SEED=$( /usr/bin/openssl rsautl -decrypt -inkey $OATH_KEY -in $file )
+    printf "%-10s %-12s %-6s %-32s\n" \
+        "HOTP/T30/6" "${OATH_USER}" "-" "${OATH_SEED}" >>${OATH_USERS}.new
 done
 
 if ! diff -q ${OATH_USERS}.new ${OATH_USERS} >/dev/null; then
