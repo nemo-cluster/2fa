@@ -1,0 +1,45 @@
+#!/bin/bash
+
+export OATH_TMP_FILE=${HOME}/.oath.enc
+export LOGINNAME="login.nemo.uni-freiburg.de"
+export PUB_KEY="key@subission.binac"
+export PUB_KEY_FILE=/etc/public_key.gpg
+OATH_USER_FILE=/usr/local/etc/oath/$USER
+OATH_HOTL="enm-support@hpc.uni-freiburg.de"
+
+add_user () {
+    OATH_SEED_BASE16=$( head -c 15 /dev/urandom | xxd -p )
+    OATH_SEED_BASE32=$( echo $OATH_SEED_BASE16 | xxd -p -r | base32)
+    gpg --import $PUB_KEY_FILE 2> /dev/null
+    echo -e "$OATH_SEED_BASE16" | gpg2 -a -e -r key@subission.binac --trust-model always > $OATH_TMP_FILE
+    qrencode -t UTF8 "otpauth://totp/${1}@${LOGINNAME}?secret=${OATH_SEED_BASE32}"
+    echo "Only if you cant scan your this QR-Code:"
+    echo "Base32: $OATH_SEED_BASE32"
+    echo "Type: TOTP"
+    echo "Digits: 6"
+    echo "Iterations: 30"
+    echo "Algorithm: SHA-1"
+    echo "RUN" | nc ::1 165
+}
+
+if ! [[ -e $OATH_USER_FILE ]]; then
+    add_user $USER
+    echo "This code is only shown once, please add it to your generator."
+    echo "Please do not save copies of this code on systems you use to login."
+    echo
+    echo "If you close this window or session you won't be able to scan the"
+    echo "qr-code anymore. You will need to contact support."
+else
+    echo "User $USER exists, please contact support:"
+    echo "    $OATH_HOTL"
+fi
+
+echo
+while true; do
+    read  -p "Exit and close session (y/N) " close
+    if [ " ${close}" = " y" -o " ${close}" = " Y" ] ; then
+        exit
+    fi
+done
+
+exit
