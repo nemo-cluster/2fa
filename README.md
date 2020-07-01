@@ -22,4 +22,4 @@ und IOS
 
 ## Varianten
 
-Es gibt Variante A, die noch mit `openssl` RSA verschlüsselt und daten per `rsync` am Management-Knoten kopiert und per `pdcp` die Dateien verteilt und Variante B mit GPG-Verschlüsselung und `socat` als Mechanismus zum Kopiueren der Credentials.
+Es gibt Variante A, die noch mit `openssl` RSA verschlüsselt und daten per `rsync` am Management-Knoten kopiert und per `pdcp` die Dateien verteilt und Variante B mit GPG-Verschlüsselung und `socat` als Mechanismus zum Kopieren der Credentials.
